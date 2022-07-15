@@ -702,10 +702,7 @@ def refine_detections_graph(rois, probs, deltas, window, config):
     if config.NUM_CLASSES >= 2:
         class_ids = tf.ones_like(probs[:, 0], dtype=tf.int32)
     else:
-        if config.NUM_CLASSES >= 2:
-            class_ids = tf.ones_like(probs[:, 0], dtype=tf.int32)
-        else:
-            class_ids = tf.argmax(probs, axis=1, output_type=tf.int32)
+        class_ids = tf.argmax(probs, axis=1, output_type=tf.int32)
     # Class probability of the top class of each ROI
     indices = tf.stack([tf.range(tf.shape(probs)[0]), class_ids], axis = 1)
     class_scores = tf.gather_nd(probs, indices)
