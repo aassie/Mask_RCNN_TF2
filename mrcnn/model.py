@@ -699,9 +699,12 @@ def refine_detections_graph(rois, probs, deltas, window, config):
         coordinates are normalized.
     """
     # Class IDs per ROI
-    class_ids = tf.argmax(probs, axis=1, output_type=tf.int32)
+    if config.NUM_CLASSES >= 2:
+     class_ids = tf.ones_like(probs[:, 0], dtype=tf.int32)
+    else:
+     class_ids = tf.argmax(probs, axis=1, output_type=tf.int32)
     # Class probability of the top class of each ROI
-    indices = tf.stack([tf.range(probs.shape[0]), class_ids], axis=1)
+    indices = tf.stack([tf.range(tf.shape(probs)[0]), class_ids], axis = 1)
     class_scores = tf.gather_nd(probs, indices)
     # Class-specific bounding box deltas
     deltas_specific = tf.gather_nd(deltas, indices)
@@ -950,7 +953,10 @@ def fpn_classifier_graph(rois, feature_maps, image_meta,
                            name='mrcnn_bbox_fc')(shared)
     # Reshape to [batch, num_rois, NUM_CLASSES, (dy, dx, log(dh), log(dw))]
     s = K.int_shape(x)
-    mrcnn_bbox = KL.Reshape((s[1], num_classes, 4), name="mrcnn_bbox")(x)
+    if s[1]==None:
+        mrcnn_bbox = KL.Reshape((-1, num_classes, 4), name="mrcnn_bbox")(x)
+    else:
+        mrcnn_bbox = KL.Reshape((s[1], num_classes, 4), name="mrcnn_bbox")(x)
 
     return mrcnn_class_logits, mrcnn_probs, mrcnn_bbox
 
@@ -2101,13 +2107,7 @@ class MaskRCNN():
         exclude: list of layer names to exclude
         """
         import h5py
-        # Conditional import to support versions of Keras before 2.2
-        # TODO: remove in about 6 months (end of 2018)
-        try:
-            from keras.engine import saving
-        except ImportError:
-            # Keras before 2.2 used the 'topology' namespace.
-            from keras.engine import topology as saving
+        from tensorflow.python.keras import saving
 
         if exclude:
             by_name = True
@@ -2129,9 +2129,9 @@ class MaskRCNN():
             layers = filter(lambda l: l.name not in exclude, layers)
 
         if by_name:
-            saving.load_weights_from_hdf5_group_by_name(f, layers)
+            saving.hdf5_format.load_weights_from_hdf5_group_by_name(f, layers)
         else:
-            saving.load_weights_from_hdf5_group(f, layers)
+            saving.hdf5_format.load_weights_from_hdf5_group(f, layers)
         if hasattr(f, 'close'):
             f.close()
 
@@ -2201,7 +2201,7 @@ class MaskRCNN():
             loss = (
                 tf.reduce_mean(layer.output, keepdims=True)
                 * self.config.LOSS_WEIGHTS.get(name, 1.))
-            self.keras_model.metrics_tensors.append(loss)
+            self.keras_model.add_metric(loss, name)
 
     def set_trainable(self, layer_regex, keras_model=None, indent=0, verbose=1):
         """Sets model layers as trainable if their names match
@@ -2362,9 +2362,9 @@ class MaskRCNN():
         # multiprocessing workers. See discussion here:
         # https://github.com/matterport/Mask_RCNN/issues/13#issuecomment-353124009
         if os.name is 'nt':
-            workers = 0
+            workers = 1
         else:
-            workers = multiprocessing.cpu_count()
+            workers = 1
 
         self.keras_model.fit_generator(
             train_generator,
@@ -2376,7 +2376,7 @@ class MaskRCNN():
             validation_steps=self.config.VALIDATION_STEPS,
             max_queue_size=100,
             workers=workers,
-            use_multiprocessing=True,
+            use_multiprocessing=False,
         )
         self.epoch = max(self.epoch, epochs)
 
