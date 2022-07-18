@@ -53,7 +53,7 @@ def display_images(images, titles=None, cols=4, cmap=None, norm=None,
         plt.imshow(image.astype(np.uint8), cmap=cmap,
                    norm=norm, interpolation=interpolation)
         i += 1
-    plt.savefig('/content/TrainingDataExample_MaskRCNN.png',bbox_inches='tight',pad_inches=0)
+    plt.savefig('/home/adrien_assie_pro/ML/Results/TrainingDataExample_MaskRCNN.png',bbox_inches='tight',pad_inches=0)
     plt.show()
 
 
