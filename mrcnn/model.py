@@ -21,6 +21,8 @@ import tensorflow.keras.layers as KL
 import tensorflow.keras.utils as KU
 from tensorflow.python.eager import context
 import tensorflow.keras.models as KM
+from tensorflow.python.framework.ops import disable_eager_execution
+disable_eager_execution()
 
 from mrcnn import utils
 
