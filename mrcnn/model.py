@@ -1881,8 +1881,9 @@ class MaskRCNN():
             input_gt_boxes = KL.Input(
                 shape=[None, 4], name="input_gt_boxes", dtype=tf.float32)
             # Normalize coordinates
-            gt_boxes = KL.Lambda(lambda x: norm_boxes_graph(
-                x, K.shape(input_image)[1:3]))(input_gt_boxes)
+            h, w = K.shape(input_image)[1], K.shape(input_image)[2]
+            image_scale = K.cast(K.stack([h, w, h, w], axis=0), tf.float32)
+            gt_boxes = KL.Lambda(lambda x: K.cast(x, tf.float32))(input_gt_boxes)
             # 3. GT Masks (zero padded)
             # [batch, height, width, MAX_GT_INSTANCES]
             if config.USE_MINI_MASK:
@@ -1940,19 +1941,7 @@ class MaskRCNN():
             # TODO: can this be optimized to avoid duplicating the anchors?
             anchors = np.broadcast_to(anchors, (config.BATCH_SIZE,) + anchors.shape)
             # A hack to get around Keras's bad support for constants
-            class AnchorsLayer(KL.Layer):
-                def __init__(self, anchors, name="anchors", **kwargs):
-                    super(AnchorsLayer, self).__init__(name=name, **kwargs)
-                    self.anchors = tf.Variable(anchors)
-
-                def call(self, dummy):
-                    return self.anchors
-
-                def get_config(self):
-                    config = super(AnchorsLayer, self).get_config()
-                    return config
-
-            anchors = AnchorsLayer(anchors, name="anchors")(input_image)
+            anchors = KL.Lambda(lambda x: tf.Variable(anchors), name="anchors")(input_image)
         else:
             anchors = input_anchors
 
